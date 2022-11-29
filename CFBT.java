@@ -348,9 +348,9 @@ class CFBT {
 		}
 	}
 
-    static int minimax (int[] states,int[] evals) {
-        
-    }
+	static int minimax (int[] states,int[] evals) {
+		
+	}
 
 	static int intToMoves (int input,int digit) { // Converts an integer to a sequence of moves.
 		int output = (int)(Math.floor(input / Math.pow(7,Math.floor(Math.log(input) / Math.log(7)) - digit)) % 7);
@@ -442,4 +442,4 @@ class CFBT {
 		}
 		return output;
 	}
-}
+} // hi
