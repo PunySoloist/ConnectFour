@@ -78,7 +78,7 @@ class CFBT {
 				}
 			} else {
 				legalMoves = findLegalMoves(board);
-				tokenPosition = evaluate(board,2);
+				tokenPosition = evaluate(board,6);
 				board = drop(board,tokenPosition,false);
 				movesDone++;
 				tokenPrint();
@@ -215,7 +215,7 @@ class CFBT {
 		return output;
 	}
 
-	static int[][] drop(int[][] arr,int pos,boolean mover) {
+	static int[][] drop(int[][] arr,int pos,boolean mover) { // True is player, false is computer
 		int i;
 		int j;
 		int[][] output = new int[arr.length][7];
@@ -253,9 +253,9 @@ class CFBT {
 		return j;
 	}
 
-	static int evaluate(int[][] arr,int depth) {
-		int[][] states = new int[depth][Math.pow(7,depth)]; // 0 = not yet evaluated, 1 = win for either player or computer, 2 = win for neither player nor computer, 3 = illegal position.
-		int[][] evals = new int[depth][Math.pow(7,depth)]; // If states is 1, this shows (at the end) how fast c4 can be forced. If the absolute value is higher, c4 can be forced faster. Positive is for computer, negative is for player. If states is 2, it shows the c3 eval of the position.
+	static int evaluate(int[][] arr,int depth) { // Only use even values of depth.
+		int[][] states = new int[depth][(int)Math.pow(7,depth)]; // 0 = not yet evaluated, 1 = win for either player or computer, 2 = win for neither player nor computer, 3 = illegal position.
+		int[][] evals = new int[depth][(int)Math.pow(7,depth)]; // If states is 1, this shows (at the end) how fast c4 can be forced. If the absolute value is higher, c4 can be forced faster. Positive is for computer, negative is for player. If states is 2, it shows the c3 eval of the position.
 		int[][] illegalChecker = new int[6 + depth][7]; // Drop the sequence of moves in this array. If there's anything in layer depth - 1, the position is illegal.
 		int[][] expandedBoard = new int[6 + depth][7]; // So the computer doesn't have to compute the expanded board every time.
 		int[][] placeholder = new int [6][7];
@@ -270,10 +270,10 @@ class CFBT {
 		}
 		for (int i = 0; i < depth; i++) { // Iteration 0 is after 1 move by computer, iteration 1 is after 1 move by computer and 1 move by player, etc. 
 			for (int j = 0; j < Math.pow(7,i + 1); j++) { // Loop through the positions of depth i + 1
-				if (i = 0) { // We can't access the layer before this, so we have to start from scratch.
+				if (i == 0) { // We can't access the layer before this, so we have to start from scratch.
 					illegalChecker = expandedBoard;
 					for (int k = 0; k < i; k++) { // prepare illegalChecker
-						illegalChecker = drop(illegalChecker,intToMoves(j),!isEven(k));
+						illegalChecker = drop(illegalChecker,intToMoves(j,k),!isEven(k));
 					}
 					for (int k = 0; k < 7; k++) { // Is there anything above the normal board? If so, one or more of the moves was illegal.
 						if (illegalChecker[depth - 1][k] != 0) {
@@ -303,36 +303,37 @@ class CFBT {
 						evals[i][j] = updateScore(placeholder,baseScore,intToMoves(j,i),!isEven(i));
 					}
 				} else { // Check the layer before this one to inherit information.
-					if (states[i - 1][Math.floor(j / 7)] == 3) {
+					if (states[i - 1][(int)Math.floor(j / 7)] == 3) {
 						states[i][j] = 3;
-					} else if (true) {
+					} else {
 						illegalChecker = expandedBoard;
 						for (int k = 0; k < i; k++) { // prepare illegalChecker
-							illegalChecker = drop(illegalChecker,intToMoves(j),!isEven(k));
+							illegalChecker = drop(illegalChecker,intToMoves(j,k),!isEven(k));
 						}
 						for (int k = 0; k < 7; k++) { // Is there anything above the normal board? If so, one or more of the moves was illegal.
 							if (illegalChecker[depth - 1][k] != 0) {
 								states[i][j] = 3;
 							}
 						}
-					} else if (states[i - 1][Math.floor(j / 7)] == 1) {
-						states[i][j] = 1;
-						if (evals[i - 1][Math.floor(j / 7)] > 0) {
-							evals[i][j] = evals[i - 1][Math.floor(j / 7)] + 1; // Increase it by 1 so that the computer will prefer lines that lead to forced computer c4 faster.
-						} else {
-							evals[i][j] = evals[i - 1][Math.floor(j / 7)] - 1; // Decrease it by 1 so that the computer will avoid lines that lead to forced player c4 faster. Who knows, the player might miss it!
-						}
-					} else if (states[i - 1][Math.floor(j / 7)] == 2) {
-						placeholder = arr;
-						for (int k = 0; k < i; k++) {
-							placeholder = drop(placeholder,intToMoves(j,k),!isEven(k));
-						}
-						if (checkFour(localTranslation(placeholder,intToMoves(j,i - 1),findy(placeholder,intToMoves(j,i - 1))))) { // Check to see if there's a c4
+						if (states[i - 1][(int)Math.floor(j / 7)] == 1) {
 							states[i][j] = 1;
-							if (placeholder[intToMoves(j,i - 1)][findy(placeholder,intToMoves(j,i - 1))] == 1) {
-								evals[i][j] = -1; // Player wins
+							if (evals[i - 1][(int)Math.floor(j / 7)] > 0) {
+								evals[i][j] = evals[i - 1][(int)Math.floor(j / 7)] + 1; // Increase it by 1 so that the computer will prefer lines that lead to forced computer c4 faster.
 							} else {
-								evals[i][j] = 1; // Computer wins
+								evals[i][j] = evals[i - 1][(int)Math.floor(j / 7)] - 1; // Decrease it by 1 so that the computer will avoid lines that lead to forced player c4 faster. Who knows, the player might miss it!
+							}
+						} else if (states[i - 1][(int)Math.floor(j / 7)] == 2) {
+							placeholder = arr;
+							for (int k = 0; k < i; k++) {
+								placeholder = drop(placeholder,intToMoves(j,k),!isEven(k));
+							}
+							if (checkFour(localTranslation(placeholder,intToMoves(j,i - 1),findy(placeholder,intToMoves(j,i - 1))))) { // Check to see if there's a c4
+								states[i][j] = 1;
+								if (placeholder[intToMoves(j,i - 1)][findy(placeholder,intToMoves(j,i - 1))] == 1) {
+									evals[i][j] = -1; // Player wins
+								} else {
+									evals[i][j] = 1; // Computer wins
+								}
 							}
 						} else { // There's no c4, update c3 count
 							states[i][j] = 2;
@@ -340,16 +341,52 @@ class CFBT {
 							for (int k = 0; k < i; k++) {
 								placeholder = drop(placeholder,intToMoves(j,k),!isEven(k));
 							}
-							evals[i][j] = updateScore(placeholder,evals[i - 1][Math.floor(j / 7)],intToMoves(j,i),!isEven(i));
+							evals[i][j] = updateScore(placeholder,evals[i - 1][(int)Math.floor(j / 7)],intToMoves(j,i),!isEven(i));
 						}
 					}
 				}
 			}
 		}
+		return minimax(states[depth - 1],evals[depth - 1],depth);
 	}
 
-	static int minimax (int[] states,int[] evals) {
-		
+	static int minimax (int[] states,int[] evals,int depth) {
+		int[] hybrid = new int[states.length];
+		int[] placeholder = new int[7];
+		int[] bias = {0,1,2,3,2,1,0};
+		for (int i = 0; i < states.length; i++) {
+			if (states[i] == 1) {
+				hybrid[i] = evals[i] * 1000;
+			} else if (states[i] == 2) {
+				hybrid[i] = evals[i];
+			} else if (states[i] == 3) {
+				hybrid[i] = 1500; // 1500 is the "code" for an illegal move. It gets ignored when calculating minimaxing.
+			}
+		}
+		int[][] layers = new int[depth][(int)Math.pow(7,depth)]; // The last layer is the evaluation after only one computer move.
+		layers[0] = hybrid;
+		for (int i = 0; i < depth - 1; i++) {
+			for (int j = 0; j < Math.pow(7, depth - i - 1); j++) {
+				for (int k = 0; k < 7; k++) {
+					placeholder[k] = layers[i][(int)(7 * Math.floor(j / 7) + k)]; // To evaluate lowest and highest functions
+				}
+				if (isEven(i)) {
+					layers[i + 1][(int)Math.floor(j / 7)] = lowest(placeholder);
+				} else {
+					layers[i + 1][(int)Math.floor(j / 7)] = highest(placeholder);
+				}
+			}
+		}
+		for (int i = 0; i < 7; i++) {
+			placeholder[i] = 5 * layers[depth - 1][i] + bias[i]; // The algorithm should favor spots more in the center.
+		}
+		for (int i = 0; i < 7; i++) {
+			if (placeholder[i] == highest(placeholder)) {
+				return i;
+			}
+		}
+		System.out.println("Something went wrong. This is line 388 by the way.");
+		return 0;
 	}
 
 	static int intToMoves (int input,int digit) { // Converts an integer to a sequence of moves.
@@ -366,7 +403,7 @@ class CFBT {
 	}
 
 	static int updateScore (int[][] arr,int score,int move,boolean turn) { // Adds or subtracts to the score based on the number of connect3s. True = player's turn, false = computer's turn
-		int output = score;
+		int output = score; // If turn is true, the the computer is evaluating the player's move. Otherwise, the computer is evaluating the computer's move.
 		int change = 0;
 		int[][] local = localTranslation(arr,move,findy(arr,move));
 		for (int i = 1; i < 4; i++) {
@@ -417,29 +454,23 @@ class CFBT {
 		return output;
 	}
 
-	static int lowest(int a, int b, int c, int d, int e, int f, int g) {
-		int output = Math.min(Math.min(Math.min(Math.min(Math.min(Math.min(a,b),c),d),e),f),g);
-		return output;
-	}
-
-	static int highest(int a, int b, int c, int d, int e, int f, int g) {
-		int output = Math.max(Math.max(Math.max(Math.max(Math.max(Math.max(a,b),c),d),e),f),g);
-		return output;
-	}
-
-	static int lowest(int[] arr) {
+	static int lowest(int[] arr) { // Ignores all occurences of the number 1500
 		int output = arr[0];
 		for (int i = 1; i < arr.length; i++) {
-			output = Math.min(arr[i - 1],arr[i]);
+			if (!(1500 == arr[i] || (7500 <= arr[i] && arr[i] <= 7503))) {
+				output = Math.min(output,arr[i]);
+			}
 		}
 		return output;
 	}
 
-	static int highest(int[] arr) {
+	static int highest(int[] arr) { // Ignores all occurences of the number 1500
 		int output = arr[0];
 		for (int i = 1; i < arr.length; i++) {
-			output = Math.max(arr[i - 1],arr[i]);
+			if (!(1500 == arr[i] || (7500 <= arr[i] && arr[i] <= 7503))) {
+				output = Math.max(output,arr[i]);
+			}
 		}
 		return output;
 	}
-} // hi
+}
